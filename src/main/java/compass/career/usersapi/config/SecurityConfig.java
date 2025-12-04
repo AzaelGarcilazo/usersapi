@@ -3,6 +3,7 @@ package compass.career.usersapi.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -20,7 +21,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -37,29 +38,21 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // Rutas públicas
                         .requestMatchers(
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/password-recovery",
-                                // Swagger/OpenAPI
+                                "/actuator/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // Rutas internas para comunicación entre microservicios
-                        .requestMatchers("/api/v1/users/*/basic-info").permitAll()
-                        .requestMatchers("/api/v1/users/*/skills").permitAll()
-                        .requestMatchers("/api/v1/users/*/exists").permitAll()
-
-                        // Rutas protegidas
-                        .requestMatchers("/api/v1/profile/**").authenticated()
-                        .requestMatchers("/api/v1/skills/**").authenticated()
-                        .requestMatchers("/api/v1/academic/**").authenticated()
-                        .requestMatchers("/api/v1/work-experience/**").authenticated()
-                        .requestMatchers("/api/v1/auth/change-password").authenticated()
-                        .requestMatchers("/api/v1/auth/profile").authenticated()
+                        .requestMatchers("/api/v1/profile/**").hasRole("UNIVERSITY_STUDENT")
+                        .requestMatchers("/api/v1/skills/**").hasRole("UNIVERSITY_STUDENT")
+                        .requestMatchers("/api/v1/academic/**").hasRole("UNIVERSITY_STUDENT")
+                        .requestMatchers("/api/v1/work-experience/**").hasRole("UNIVERSITY_STUDENT")
+                        .requestMatchers("/api/v1/auth/**").hasRole("UNIVERSITY_STUDENT")
 
                         .anyRequest().authenticated()
                 )
@@ -67,7 +60,29 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write(String.format(
+                                    "{\"timestamp\":\"%s\",\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Authentication is required\",\"path\":\"%s\"}",
+                                    java.time.Instant.now(),
+                                    request.getRequestURI()
+                            ));
+                        })
+
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpStatus.FORBIDDEN.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write(String.format(
+                                    "{\"timestamp\":\"%s\",\"status\":403,\"error\":\"Forbidden\",\"message\":\"Access denied\",\"path\":\"%s\"}",
+                                    java.time.Instant.now(),
+                                    request.getRequestURI()
+                            ));
+                        })
+                );
 
         return http.build();
     }
@@ -93,12 +108,42 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+
+        // ✅ Permitir todos los orígenes
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+
+        // ✅ Métodos HTTP permitidos
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"
+        ));
+
+        // ✅ Headers permitidos
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers"
+        ));
+
+        // ✅ Exponer headers
+        configuration.setExposedHeaders(Arrays.asList(
+                "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Credentials",
+                "Authorization"
+        ));
+
+        // ✅ Permitir credenciales
+        configuration.setAllowCredentials(true);
+
+        // ✅ Cache para preflight
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }
