@@ -45,15 +45,15 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/password-recovery")
-    @Operation(
-            summary = "Allow password recovery",
-            description = "Start the password recovery process for a user via their email."
-    )
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void requestPasswordRecovery(@Valid @RequestBody PasswordRecoveryRequest request) {
-        authService.requestPasswordRecovery(request);
-    }
+//    @PostMapping("/password-recovery")
+//    @Operation(
+//            summary = "Allow password recovery",
+//            description = "Start the password recovery process for a user via their email."
+//    )
+//    @ResponseStatus(HttpStatus.NO_CONTENT)
+//    public void requestPasswordRecovery(@Valid @RequestBody PasswordRecoveryRequest request) {
+//        authService.requestPasswordRecovery(request);
+//    }
 
     @PutMapping("/change-password")
     @Operation(
