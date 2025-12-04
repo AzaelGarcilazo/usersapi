@@ -30,14 +30,12 @@ public class OpenApiConfig {
 
         List<Server> servers;
         if (isProduction) {
-            // En producción (Render)
             servers = List.of(
                     new Server()
                             .url("https://" + productionUrl)
                             .description("Production (Render)")
             );
         } else {
-            // En desarrollo local
             servers = List.of(
                     new Server()
                             .url("http://localhost:" + serverPort)
@@ -47,14 +45,13 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("EvaluationsAPI - CareerCompass")
+                        .title("UsersAPI - CareerCompass")
                         .version("1.0.0")
-                        .description("API REST para evaluaciones vocacionales")
+                        .description("REST API for users of CareerCompass")
                         .contact(new Contact()
                                 .name("CareerCompass Team")
                                 .email("support@careercompass.com")))
 
-                //Usar los servidores detectados automáticamente
                 .servers(servers)
 
                 .addSecurityItem(new SecurityRequirement()
@@ -66,6 +63,6 @@ public class OpenApiConfig {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("Ingrese el token JWT (sin 'Bearer', solo el token)")));
+                                .description("Enter the JWT token (without 'Bearer', just the token)")));
     }
 }
