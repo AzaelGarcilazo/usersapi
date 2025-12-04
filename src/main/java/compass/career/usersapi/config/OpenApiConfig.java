@@ -24,30 +24,48 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "bearerAuth";
 
+        //Detectar automáticamente si estamos en producción o desarrollo
+        String productionUrl = System.getenv("RENDER_EXTERNAL_HOSTNAME");
+        boolean isProduction = productionUrl != null && !productionUrl.isEmpty();
+
+        List<Server> servers;
+        if (isProduction) {
+            // En producción (Render)
+            servers = List.of(
+                    new Server()
+                            .url("https://" + productionUrl)
+                            .description("Production (Render)")
+            );
+        } else {
+            // En desarrollo local
+            servers = List.of(
+                    new Server()
+                            .url("http://localhost:" + serverPort)
+                            .description("Local Development")
+            );
+        }
+
         return new OpenAPI()
                 .info(new Info()
-                        .title("UsersAPI - CareerCompass")
+                        .title("EvaluationsAPI - CareerCompass")
                         .version("1.0.0")
-                        .description("Users Microservice API - Handles authentication, profiles, and user data")
+                        .description("API REST para evaluaciones vocacionales")
                         .contact(new Contact()
                                 .name("CareerCompass Team")
-                                .email("support@careercompass.com"))
-                        .license(new License()
-                                .name("MIT License")
-                                .url("https://opensource.org/licenses/MIT")))
-                .servers(List.of(
-                        new Server()
-                                .url("http://localhost:" + serverPort)
-                                .description("Development Server")
-                ))
+                                .email("support@careercompass.com")))
+
+                //Usar los servidores detectados automáticamente
+                .servers(servers)
+
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
+
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName, new SecurityScheme()
                                 .name(securitySchemeName)
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("Enter JWT token from /api/v1/auth/login or /api/v1/auth/register")));
+                                .description("Ingrese el token JWT (sin 'Bearer', solo el token)")));
     }
 }
